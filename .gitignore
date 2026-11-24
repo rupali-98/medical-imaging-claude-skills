@@ -1,0 +1,7 @@
+.DS_Store
+.claude/settings.local.json
+*.nii
+*.nii.gz
+*.h5
+*.dcm
+__pycache__/

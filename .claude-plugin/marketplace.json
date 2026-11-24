@@ -1,0 +1,11 @@
+{
+  "name": "medical-imaging-skills",
+  "owner": { "name": "Rupali" },
+  "plugins": [
+    {
+      "name": "medical-imaging-data-prep",
+      "source": "./",
+      "description": "data-ingestion and data-exploration skills for MRI datasets"
+    }
+  ]
+}
