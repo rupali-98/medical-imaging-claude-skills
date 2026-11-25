@@ -49,7 +49,7 @@ skills/
 
 ## Note
 
-The skills were written for a hippocampus segmentation repo, so their example commands (`hippo.manifest`, `hippo.cohort`) refer to that project. The checklists and rules apply to any MRI dataset; Claude adapts the commands to your repo.
+The skills don't depend on any particular codebase. They describe what the manifest and exploration scripts must check and output; Claude uses the scripts your project already has, or offers to write them. Dataset facts (MSD Task04, MNI-HISUB25, OVAL and others) appear only as examples, and `references/external_datasets.md` is a worked hippocampus MRI Table 1.
 
 The skills never download data and never modify raw files.
 

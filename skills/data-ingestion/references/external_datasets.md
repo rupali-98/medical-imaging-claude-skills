@@ -1,13 +1,13 @@
-# Table 1: training data and candidate external datasets
+# Table 1 (worked example): hippocampus MRI training data and candidate external datasets
 
 Last checked: **2026-11-17**.
 
 Sources:
-- **Verified from the files:** MSD Task04 and MNI-HISUB25, which are on disk (`hippo.manifest` run in the reference project).
+- **Verified from the files:** MSD Task04 and MNI-HISUB25 (a manifest run over both datasets).
 - **From pages and papers:** all other rows. None of those datasets has been downloaded.
 - **"Unknown"** means the sources don't say.
 
-Update this file whenever a row is added or a fact is confirmed, and change the date.
+Copy this table into your own project (e.g. `docs/external_datasets.md`) and update that copy: add rows, confirm facts, change the date.
 
 ## A. Data and imaging
 

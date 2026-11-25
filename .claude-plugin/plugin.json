@@ -1,6 +1,6 @@
 {
   "name": "medical-imaging-data-prep",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Claude Code skills to audit, ingest and explore MRI datasets before training: integrity checks, patient-level leak detection, manifest, Table 1, spacing/orientation/intensity/label exploration.",
   "author": { "name": "Rupali" },
   "homepage": "https://github.com/rupali-98/medical-imaging-claude-skills",
