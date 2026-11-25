@@ -1,6 +1,6 @@
 ---
 name: data-ingestion
-description: Audit, collect and ingest a medical-imaging dataset (MRI/CT NIfTI, Analyze, MINC, DICOM) for this hippocampus segmentation repo or one like it, and compare it with candidate external datasets. Answers the data-ingestion checklist with real numbers - size and files, label types and how they were drawn, public access and licence, patient IDs, metadata, coordinate space ("map"), voxel size, generalisability, corrupted files or missing slices - runs the automated integrity pass (truncated .nii.gz, all-zero, NaN/Inf, label values, label-image grid), builds the manifest with a standard folder layout and one label format, records source and patient ID so train/test can't share a person, links sequences and longitudinal sessions per patient, and writes "Table 1" comparing the training data with every external dataset. Use it whenever the user asks to check, audit, ingest, add or describe a dataset, asks about data quality, leakage, patient-level splits, file layout or a manifest, or asks which external datasets could test the model, even if they don't say "skill".
+description: Audit, collect and ingest a medical-imaging dataset (MRI/CT NIfTI, Analyze, MINC, DICOM) for an MRI/CT deep-learning project (written for hippocampus segmentation), and compare it with candidate external datasets. Answers the data-ingestion checklist with real numbers - size and files, label types and how they were drawn, public access and licence, patient IDs, metadata, coordinate space ("map"), voxel size, generalisability, corrupted files or missing slices - runs the automated integrity pass (truncated .nii.gz, all-zero, NaN/Inf, label values, label-image grid), builds the manifest with a standard folder layout and one label format, records source and patient ID so train/test can't share a person, links sequences and longitudinal sessions per patient, and writes "Table 1" comparing the training data with every external dataset. Use it whenever the user asks to check, audit, ingest, add or describe a dataset, asks about data quality, leakage, patient-level splits, file layout or a manifest, or asks which external datasets could test the model, even if they don't say "skill".
 ---
 
 # Medical image data collection and ingestion
@@ -11,42 +11,50 @@ end up on both sides of a split. This skill answers those questions with numbers
 themselves, and turns the answers into a manifest that downstream code reads instead of each dataset's
 own paths.
 
-## Ground rules (from CLAUDE.md, apply every time)
+## Ground rules (apply every time)
 
 - **Don't download datasets.** Read what is on disk; for anything else give the link so the user can
   check the data and licence first. Pages and papers about a dataset may be read; its files may not.
 - **Raw data is read only.** Never rename, move, convert or delete files in `data/`. Stray or duplicate
   files are reported, and the user decides.
-- **Long runs:** quick checks may run, with output in the scratchpad. The real `hippo.ingestion` run that
+- **Long runs:** quick checks may run, with output in the scratchpad. The real `hippo.manifest` run that
   writes into `data/` is given as a command for the user.
 - **Keep file searches inside the project folder.** Web research is for dataset pages and papers only.
 - **Never upload data**, and never put patient identifiers in a web query.
 - **Separate verified from sourced.** Every answer says whether it came from the files (verified) or from
   a page or paper (sourced, with the link). "Unknown" is a valid answer; a guess is not.
 
-## The tool: `hippo.ingestion`
+## The tool: the manifest builder (`hippo.manifest` in the reference project)
 
-**Script name:** the ingestion script is always `ingestion.py` in the project's package (`src/<pkg>/ingestion.py`,
-run as `python -m <pkg>.ingestion`), with its test in `tests/test_ingestion.py`. Never put a dataset name in
-it (`fastmri_manifest.py`, `msd_ingestion.py`) and never call it `manifest.py`: one script serves every
-dataset through adapters, and `manifest.csv` is only one of its outputs. If a project still has an older
-`manifest.py` or `<dataset>_manifest.py`, say so and offer the rename (module, imports, test, docs, CLAUDE.md);
-don't rename it unasked.
+**Reference project.** The commands, paths and numbers below come from the hippocampus segmentation
+project this skill was written for (`src/hippo/manifest.py`, test `tests/test_manifest.py`). If the
+user's project has no such module, find its equivalent, or write the same checks as one script and ask
+before adding it. Treat the project-specific numbers as a worked example, not as facts about the user's data.
 
-`src/hippo/ingestion.py` does the file-level work for every dataset that has an adapter:
+**One script for every dataset.** The manifest builder (`src/<pkg>/manifest.py`, run as
+`python -m <pkg>.manifest`, test in `tests/test_manifest.py`) covers the file-level phases (1, 3, 4, 5, 6).
+Phases 2 and 7 are research the skill does, not code. Never put a dataset name in the script
+(`fastmri_manifest.py`, `msd_ingestion.py`): one script serves every dataset through adapters. If a
+project has per-dataset scripts, say so and offer to merge them; don't do it unasked.
+
+`src/hippo/manifest.py` does the file-level work for every dataset that has an adapter:
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m hippo.ingestion --quick --out <scratchpad>/manifest      # headers only, seconds
-PYTHONPATH=src .venv/bin/python -m hippo.ingestion --out <scratchpad>/manifest \
+PYTHONPATH=src .venv/bin/python -m hippo.manifest --quick --out <scratchpad>/manifest      # headers only, seconds
+PYTHONPATH=src .venv/bin/python -m hippo.manifest --out <scratchpad>/manifest \
     --splits data/splits.json data/folds/fold0.json --layout <scratchpad>/standard          # full pass (~4.5 min for 10 GB)
-PYTHONPATH=src .venv/bin/python -m hippo.ingestion --splits data/splits.json --layout     # the user's real run -> data/manifest/, data/standard/
+PYTHONPATH=src .venv/bin/python -m hippo.manifest --splits data/splits.json --layout     # the user's real run -> data/manifest/, data/standard/
 ```
 
 Outputs:
 - `manifest.csv`: one row per file.
-- `subjects.csv`: one row per person, with sessions, sequences and labels.
+- `subjects.csv`: one row per `subject_id`, with sessions, sequences and labels. Without real IDs
+  (MSD) that is one row per file, so group by `leak_group` instead.
 - `labels.csv`: every label scheme in one table.
-- `checks.json`: problems, stray files, duplicates, header-text scan and split leaks.
+- `checks.json`: problems, stray files, duplicates, header-text scan, split leaks and a per-dataset summary.
+
+`--quick` reads headers only: the duplicate (MD5), NaN/Inf and empty-slice checks stay empty
+until the full run.
 
 The existing MSD QC report (`data/explore/summary.json`, from `hippo.explore`) adds intensity groups and
 label-shape warnings; read it rather than repeating it.
@@ -62,7 +70,8 @@ Work through the phases in order. Each phase lists the checklist questions it an
 - List anything that isn't a dataset file, and say what it is:
   - macOS `._*` and `.DS_Store` files;
   - uncompressed copies of a `.gz` file, which are often 10× larger;
-  - Finder duplicates named `"<file> 2"`;
+  - Finder duplicates named `"<file> 2"` (the reference code only recognises `x.nii 2`; `x.nii 2.gz`
+    shows up as "unknown", so check those by eye);
   - files that match no pattern.
 
   `checks.json → stray_files` sorts them by kind.
@@ -89,7 +98,7 @@ Work through the phases in order. Each phase lists the checklist questions it an
 
 ### 3. Technical metadata: "map" (coordinate space), voxel size, orientation
 
-From the headers (`hippo.ingestion --quick` fills these columns):
+From the headers (`hippo.manifest --quick` fills these columns):
 - shape, voxel size, dtype;
 - orientation codes (RAS/LAS);
 - qform/sform codes;
@@ -109,7 +118,7 @@ Flag:
 
 ### 4. Integrity pass: "corrupted files or missing slices", "truncated, all-zero, NaN/Inf"
 
-Run the full `hippo.ingestion` pass. Every file is loaded completely, so a truncated `.gz` fails here. It
+Run the full `hippo.manifest` pass (not `--quick`). Every file is loaded completely, so a truncated `.gz` fails here. It
 checks:
 - unreadable files;
 - NaN/Inf;
@@ -138,13 +147,13 @@ Read the result before reporting it. These are known false alarms or expected fi
   The resolution tag comes from the header, never from a file name.
 - **Downstream code filters manifest rows** (`dataset`, `role`, `modality`, `space`, `side`) instead
   of building paths.
-- **Adding a dataset = one adapter** in `ingestion.py`, registered in `ADAPTERS`, never a new
+- **Adding a dataset = one adapter** in `manifest.py`, registered in `ADAPTERS`, never a new
   `<dataset>_*.py` script. It returns rows built
   with `row(dataset, path, subject, ...)`. It also needs:
   - an entry in `DATASETS`: source, licence, defacing, metadata;
   - its label scheme in `LABEL_SCHEMES` as `value: (name, part, documented)`, where `part` says how the
     value maps onto the whole hippocampus;
-  - a test in `tests/test_ingestion.py` with a tiny fake copy of its folder layout.
+  - a test in `tests/test_manifest.py` with a tiny fake copy of its folder layout.
 - **Non-NIfTI formats** (Analyze `.hdr/.img`, MINC, DICOM) are converted into a *separate* folder, never
   over the originals. Check left/right after converting Analyze: Analyze 7.5 doesn't store orientation
   reliably. Compare one scan against a viewer, e.g. with an asymmetric landmark.
@@ -160,9 +169,9 @@ Read the result before reporting it. These are known false alarms or expected fi
 - **All sequences and sessions of one person share the subject and leak group.** `subjects.csv` shows
   them together, and splits must be made by `leak_group`, never by file.
 - **Without IDs, write the assumption down.** MSD's leak group is the possible left/right pair
-  `(n + 1) // 2`, an assumption. `--splits` reports leak groups found in more than one split. The known
-  result for `data/splits.json` is 22 test+train, 4 test+val, 15 train+val. Don't change the split
-  unless the user asks: it is a documented limitation.
+  `(n + 1) // 2`, an assumption. `--splits` reports leak groups found in more than one split. Report the
+  result and don't change the split unless the user asks. (Worked example: in the reference project,
+  `data/splits.json` has 22 test+train, 4 test+val and 15 train+val shared groups, a documented limitation.)
 - **Cross-dataset identity:** check whether two datasets come from the same cohort before calling one
   "external". Known cases: **OVAL and Learn2Reg "Hippocampus MR" are the MSD Task04 cohort** (same
   Vanderbilt people). Same hospital (the two Henry Ford NITRC sets) → check for patient overlap.
@@ -179,8 +188,10 @@ Read the result before reporting it. These are known false alarms or expected fi
 
 - **Search:** dataset pages (NITRC, Grand Challenge, consortium sites) and the dataset paper (PubMed
   Central). Read only the pages, never the data. Log-in walls: say what couldn't be read.
-- **Keep [references/external_datasets.md](references/external_datasets.md) current.** It holds the
-  last Table 1 and the date it was checked. Start from it, add or update rows, and change the date.
+- **Start from [references/external_datasets.md](references/external_datasets.md).** It holds the
+  last Table 1 for hippocampus MRI and the date it was checked. Don't edit it in place (with a plugin
+  install it is replaced on update): write the updated table, with today's date, into the user's project,
+  e.g. `docs/external_datasets.md`, and reuse that copy next time.
 - **Table 1 has two parts, always these columns.**
   - Include rows for the **training dataset** and the **current external dataset** as references.
   - **A. Data and imaging:**
@@ -201,8 +212,8 @@ Read the result before reporting it. These are known false alarms or expected fi
   - Bold the facts that change usability: anisotropic voxels, unusual formats, small labelled counts,
     same cohort as training.
 - **After the table, write three things:**
-  1. A summary: whether any independent dataset has the training labels (here: none has MSD's
-     anterior/posterior split, so external tests are whole hippocampus only), and the expected protocol
+  1. A summary: whether any independent dataset has the training labels (worked example: none has
+     MSD's anterior/posterior split, so external tests are whole hippocampus only), and the expected protocol
      gap.
   2. A ranked list of the usable ones, with the reason for each rank.
   3. A "couldn't confirm" list, and links.
@@ -214,11 +225,11 @@ Read the result before reporting it. These are known false alarms or expected fi
 
 Answer the checklist in the user's order, numbered, one or two lines each, with numbers. Then:
 - **Problems found:** each with file, severity and what the user might do. Don't do it for them.
-- **Commands for the user:** the real `hippo.ingestion` run, and any conversion.
+- **Commands for the user:** the real `hippo.manifest` run, and any conversion.
 - **Verified vs sourced:** what came from the files, and what came from pages or papers (with links).
 
 If the user wants it recorded:
-- add a short note to CLAUDE.md (`ingestion.py` row or Known issues);
+- if the project has a CLAUDE.md, add a short note (manifest script row or Known issues);
 - add a line to the README data table, e.g. "evaluated on T1 only, at 1 mm".
 
 Keep the README and `docs/` numbers the same.

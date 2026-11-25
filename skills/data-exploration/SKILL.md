@@ -6,10 +6,10 @@ description: Explore medical-imaging datasets (MRI NIfTI, training and external 
 # Medical image data exploration (MRI)
 
 Exploration answers "how do these datasets differ, and what will the model trip over?" It runs on
-the manifest from the **data-ingestion** skill (`hippo.ingestion`), so do ingestion first: integrity,
+the manifest from the **data-ingestion** skill (`hippo.manifest` in the reference project), so do ingestion first: integrity,
 patient IDs and leak checks belong there, not here.
 
-## Ground rules (from CLAUDE.md)
+## Ground rules
 
 - **Read only.** Never change files in `data/`. No downloads: give the link.
 - **The user runs the real pass.** `hippo.cohort` on the full data loads every label and can take minutes:
@@ -22,7 +22,7 @@ patient IDs and leak checks belong there, not here.
 ## The tool: `hippo.cohort`
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m hippo.ingestion --splits data/splits.json --layout       # first, if data/manifest/ is missing
+PYTHONPATH=src .venv/bin/python -m hippo.manifest --splits data/splits.json --layout       # first, if data/manifest/ is missing
 PYTHONPATH=src .venv/bin/python -m hippo.cohort                                            # data/manifest/manifest.csv -> data/cohort/
 PYTHONPATH=src .venv/bin/python -m hippo.cohort --exclude hres                             # skip the large 0.4 mm label files (faster)
 PYTHONPATH=src .venv/bin/python -m hippo.cohort --metadata data/scanner_metadata.csv       # per-file site/vendor/model/field strength/diagnosis
@@ -138,7 +138,7 @@ Dataset-level metadata lives in `cohort.DATASET_METADATA` (from Table 1 in
 - Show the three figures (paths) and say what to look at in each.
 - **Problems found:** file, severity, suggested action (the user decides).
 - **Commands for the user**, including the real `hippo.cohort` run if it hasn't been run.
-- If the user wants it recorded, add a short note to CLAUDE.md or `docs/`, and keep the README and docs
+- If the user wants it recorded, add a short note to the project's CLAUDE.md (if any) or `docs/`, and keep the README and docs
   numbers the same.
 
 ## Known facts for this repo (check against a fresh run)

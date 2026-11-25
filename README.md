@@ -49,7 +49,7 @@ skills/
 
 ## Note
 
-The skills were written for a hippocampus segmentation repo, so their example commands (`hippo.ingestion`, `hippo.cohort`) refer to that project. The checklists and rules apply to any MRI dataset; Claude adapts the commands to your repo.
+The skills were written for a hippocampus segmentation repo, so their example commands (`hippo.manifest`, `hippo.cohort`) refer to that project. The checklists and rules apply to any MRI dataset; Claude adapts the commands to your repo.
 
 The skills never download data and never modify raw files.
 

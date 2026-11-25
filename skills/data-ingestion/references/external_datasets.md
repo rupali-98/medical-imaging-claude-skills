@@ -3,7 +3,7 @@
 Last checked: **2026-11-17**.
 
 Sources:
-- **Verified from the files:** MSD Task04 and MNI-HISUB25, which are on disk (hippo.ingestion run).
+- **Verified from the files:** MSD Task04 and MNI-HISUB25, which are on disk (`hippo.manifest` run in the reference project).
 - **From pages and papers:** all other rows. None of those datasets has been downloaded.
 - **"Unknown"** means the sources don't say.
 
